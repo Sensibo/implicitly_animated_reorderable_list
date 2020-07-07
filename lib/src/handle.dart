@@ -50,23 +50,29 @@ class Handle extends StatefulWidget {
 
 class _HandleState extends State<Handle> {
   ScrollableState _scrollable;
+
   // A custom handler used to cancel the pending onDragStart callbacks.
   Handler _handler;
+
   // The parent Reorderable item.
   ReorderableState _reorderable;
+
   // The parent list.
   ImplicitlyAnimatedReorderableListState _list;
+
   // Whether the ImplicitlyAnimatedReorderableList has a
   // scrollDirection of Axis.vertical.
   bool get _isVertical => _list?.isVertical ?? true;
 
   double _initialOffset;
   double _currentOffset;
+
   double get _delta => (_currentOffset ?? 0) - (_initialOffset ?? 0);
 
   // Use flags from the list as this State object is being
   // recreated between dragged and normal state.
   bool get _inDrag => _list.inDrag ?? false;
+
   bool get _inReorder => _list.inReorder ?? false;
 
   void _onDragStarted(Offset pointer) {
@@ -143,16 +149,13 @@ class _HandleState extends State<Handle> {
     assert(_reorderable != null, 'No ancestor Reorderable was found in the hierarchy!');
     _scrollable = Scrollable.of(_list.context);
 
-    return Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: (event) {
+    return GestureDetector(
+      onLongPressStart: (event) {
         final pointer = event.localPosition;
-
         // Ensure the list is not already in a reordering
         // state when initiating a new reorder operation.
         if (!_inDrag) {
           _cancelReorder();
-
           _addScrollListener();
           _handler = postDuration(
             widget.delay,
@@ -160,17 +163,22 @@ class _HandleState extends State<Handle> {
           );
         }
       },
-      onPointerMove: (event) {
-        final pointer = event.localPosition;
-        final delta = _isVertical ? event.delta.dy : event.delta.dx;
+      onLongPressUp: () => _cancelReorder(),
+      onLongPressEnd: (_) => _cancelReorder(),
+      child: Listener(
+        onPointerUp: (_) => _cancelReorder(),
+        onPointerCancel: (_) => _cancelReorder(),
+        behavior: HitTestBehavior.translucent,
+        onPointerMove: (event) {
+          final pointer = event.localPosition;
+          final delta = _isVertical ? event.delta.dy : event.delta.dx;
 
-        if (_inDrag && _inReorder) {
-          _onDragUpdated(pointer, delta.isNegative);
-        }
-      },
-      onPointerUp: (_) => _cancelReorder(),
-      onPointerCancel: (_) => _cancelReorder(),
-      child: widget.child,
+          if (_inDrag && _inReorder) {
+            _onDragUpdated(pointer, delta.isNegative);
+          }
+        },
+        child: widget.child,
+      ),
     );
   }
 }
